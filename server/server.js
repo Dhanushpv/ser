@@ -2,7 +2,7 @@ const http = require('http');
 const port = 5001;
 const url =require('url');
 const fs =require('fs');
-const queryString = require('querystring');
+// const queryString = require('querystring');
 const {MongoClient}=require ('mongodb');
 
 const client = new MongoClient('mongodb://localhost:27017');
@@ -19,7 +19,7 @@ async function connect(){
 connect();
 
 
-const server =http.createServer((req,res)=>{
+const server =http.createServer(async(req,res)=>{
 
     let db=client.db("dms");
     let collection=db.collection("users");
@@ -40,6 +40,9 @@ const server =http.createServer((req,res)=>{
         res.writeHead(200,{'Content-Type':'text/javascript'});
         res.end(fs.readFileSync('../client/script.js'));
 
+    }else if(parsed_url.pathname === '/seeusers.html'){
+        res.writeHead(200,{'Content-Type':'text/html'});
+        res.end(fs.readFileSync('../client/seeusers.html'));
     }
     else if(parsed_url.pathname === '/submit' && req.method === 'POST'){
         console.log("Reached here.....");
@@ -53,7 +56,7 @@ const server =http.createServer((req,res)=>{
         req.on('end' , ()=>{
             console.log("body : ", body);
 
-            let datas = queryString.parse(body);
+            let datas = JSON.parse(body);
             console.log("datas : ", datas);
 
             console.log("name : ", datas.username);
@@ -66,18 +69,18 @@ const server =http.createServer((req,res)=>{
 
 
             })
-            .then((message) =>{
-                console.log("message :",message);
-                res.writeHead(201,{'Content_type' : "text/plain"});
-                res.end("user created.....");
+            // .then((message) =>{
+            //     console.log("message :",message);
+            //     res.writeHead(201,{'Content_type' : "text/plain"});
+            //     res.end("user created.....");
 
-            })
-            .catch((error)=>{
-                console.log("error",error)
+            // })
+            // .catch((error)=>{
+            //     console.log("error",error)
 
-                res.writeHead(400,{"Content_type" :"text/plain"});
-                res.end(error.message ? error.message : "user creation failed");
-            })
+            //     res.writeHead(400,{"Content_type" :"text/plain"});
+            //     res.end(error.message ? error.message : "user creation failed");
+            // })
 
 
             
@@ -85,6 +88,16 @@ const server =http.createServer((req,res)=>{
         });
 
 
+    }else if(parsed_url.pathname === '/submit' && req.method === 'GET'){
+        
+        let usreDatas = await collection.find().toArray();
+        console.log("userDatas :",usreDatas);
+
+        let json_datas=JSON.stringify(usreDatas);
+        console.log("json_Datas :",json_datas);
+
+        res.writeHead(200,{'Content-Type': "text/json"});
+        res.end(json_datas);
     }
 
 })
