@@ -1,106 +1,156 @@
+
 const http = require('http');
 const port = 5001;
-const url =require('url');
-const fs =require('fs');
-// const queryString = require('querystring');
-const {MongoClient}=require ('mongodb');
+const url = require('url');
+const fs = require('fs');
+const { MongoClient, ObjectId } = require('mongodb');
 
 const client = new MongoClient('mongodb://localhost:27017');
 
-async function connect(){
-    try{
-    await client.connect();
-    console.log("database connection established....")
-} catch(error){
-    console("error ",error)
-
-}
+async function connect() {
+    try {
+        await client.connect();
+        console.log("Database connection established...");
+    } catch (error) {
+        console.error("Error:", error);
+    }
 }
 connect();
 
+const server = http.createServer(async (req, res) => {
+    let db = client.db("dms");
+    let collection = db.collection("users");
 
-const server =http.createServer(async(req,res)=>{
 
-    let db=client.db("dms");
-    let collection=db.collection("users");
 
-    const req_url=req.url;
-    console.log("req_url :",req_url);
+    const reqUrl = req.url;
+    console.log("reqUrl:", reqUrl);
 
-    const parsed_url=url.parse(req_url);
-    console.log("parsed_url :",parsed_url);
-    if( parsed_url.pathname ==='/'){
-        res.writeHead(200,{'Content-Type':'text/html'});
+    const parsedUrl = url.parse(reqUrl, true); // true to parse query strings
+    console.log("parsedUrl:", parsedUrl);
+
+    if (parsedUrl.pathname === '/') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(fs.readFileSync('../client/index.html'));
-    }else if(parsed_url.pathname === '/adduser.html'){
-        res.writeHead(200,{'Content-Type':'text/html'});
+
+
+    } else if (parsedUrl.pathname === '/adduser.html') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(fs.readFileSync('../client/adduser.html'));
 
-    }else if(parsed_url.pathname === '/script.js'){
-        res.writeHead(200,{'Content-Type':'text/javascript'});
+
+    } else if (parsedUrl.pathname === '/script.js') {
+        res.writeHead(200, { 'Content-Type': 'text/javascript' });
         res.end(fs.readFileSync('../client/script.js'));
 
-    }else if(parsed_url.pathname === '/seeusers.html'){
-        res.writeHead(200,{'Content-Type':'text/html'});
+
+    } else if (parsedUrl.pathname === '/seeusers.html') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(fs.readFileSync('../client/seeusers.html'));
-    }
-    else if(parsed_url.pathname === '/submit' && req.method === 'POST'){
-        console.log("Reached here.....");
+
+
+    } else if (parsedUrl.pathname === '/view.html') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(fs.readFileSync('../client/view.html'));
+
+
+    } else if(parsedUrl.pathname === '/seeuser.css'){
+        res.writeHead(200, { 'Content-Type': 'text/css' });
+        res.end(fs.readFileSync('../client/seeuser.css'));
+
+    }else if(parsedUrl.pathname === '/style.css'){
+        res.writeHead(200, { 'Content-Type': 'text/css' });
+        res.end(fs.readFileSync('../client/style.css'));
+
+    }else if(parsedUrl.pathname === '/view.css'){
+        res.writeHead(200, { 'Content-Type': 'text/css' });
+        res.end(fs.readFileSync('../client/view.css'));
+
+    }else if (parsedUrl.pathname === '/submit' && req.method === 'POST') {
+        console.log("Reached POST /submit...");
 
         let body = '';
 
-        req.on('data',(chunks)=>{
-            console.log("chunks : ",chunks);
-            body += chunks.toString();
-        });
-        req.on('end' , ()=>{
-            console.log("body : ", body);
-
-            let datas = JSON.parse(body);
-            console.log("datas : ", datas);
-
-            console.log("name : ", datas.username);
-            console.log("email : ", datas.email);
-
-
-            collection.insertOne({
-                name : datas.username,
-                email : datas.email,
-
-
-            })
-            // .then((message) =>{
-            //     console.log("message :",message);
-            //     res.writeHead(201,{'Content_type' : "text/plain"});
-            //     res.end("user created.....");
-
-            // })
-            // .catch((error)=>{
-            //     console.log("error",error)
-
-            //     res.writeHead(400,{"Content_type" :"text/plain"});
-            //     res.end(error.message ? error.message : "user creation failed");
-            // })
-
-
-            
-          
+        req.on('data', (chunk) => {
+            body += chunk.toString();
         });
 
+        req.on('end', async () => {
+            try {
+                let data = JSON.parse(body);
+                console.log("Data:", data);
 
-    }else if(parsed_url.pathname === '/submit' && req.method === 'GET'){
-        
-        let usreDatas = await collection.find().toArray();
-        console.log("userDatas :",usreDatas);
+                await collection.insertOne({
+                    name: data.username,
+                    email: data.email
+                });
 
-        let json_datas=JSON.stringify(usreDatas);
-        console.log("json_Datas :",json_datas);
+                res.writeHead(201, { 'Content-Type': 'text/plain' });
+                res.end("User created...");
+            } catch (error) {
+                console.error("Error:", error);
+                res.writeHead(400, { 'Content-Type': 'text/plain' });
+                res.end("User creation failed");
+            }
+        });
+    } else if (parsedUrl.pathname === '/submit' && req.method === 'GET') {
+        try {
+            let userDatas = await collection.find().toArray();
+            // console.log("UserDatas:", userDatas);
 
-        res.writeHead(200,{'Content-Type': "text/json"});
-        res.end(json_datas);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(userDatas));
+        } catch (error) {
+            console.error("Error:", error);
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end("Error fetching users");
+        }
+    } else if (parsedUrl.pathname === ('/submits') && req.method === 'GET') {
+        let id = parsedUrl.query.id;
+        if (!id) {
+            res.writeHead(400, { 'Content-Type': 'text/plain' });
+            res.end("Missing ID");
+            return;
+        }
+
+        try {
+            let _id = new ObjectId(id);
+            let userData = await collection.findOne({ _id });
+            // console.log("UserData:", userData);
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(userData));
+        } catch (error) {
+            console.error("Error:", error);
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end("Error fetching user");
+        }
+    }else if (parsedUrl.pathname === ('/submits') && req.method === 'DELETE') {
+        let id = parsedUrl.query.id;
+        if (!id) {
+            res.writeHead(400, { 'Content-Type': 'text/plain' });
+            res.end("Missing ID");
+            return;
+        }
+
+        try {
+            let _id = new ObjectId(id);
+            let userData = await collection.deleteOne({ _id });
+            // console.log("UserData:", userData);
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(userData));
+        } catch (error) {
+            console.error("Error:", error);
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end("Error fetching user");
+        }
+    } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end("Not Found");
     }
+});
 
-})
-server.listen(port,()=>{
-    console.log(`server running at http://localhost:${port}`)
-})
+server.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});
