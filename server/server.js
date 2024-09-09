@@ -66,9 +66,13 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/css' });
         res.end(fs.readFileSync('../client/view.css'));
 
-    }else if (parsedUrl.pathname === '/submit' && req.method === 'POST') {
-        console.log("Reached POST /submit...");
+    }else if (parsedUrl.pathname === '/update.html') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(fs.readFileSync('../client/update.html'));
 
+
+    } else if (parsedUrl.pathname === '/submit' && req.method === 'POST') {
+        
         let body = '';
 
         req.on('data', (chunk) => {
@@ -116,7 +120,7 @@ const server = http.createServer(async (req, res) => {
         try {
             let _id = new ObjectId(id);
             let userData = await collection.findOne({ _id });
-            // console.log("UserData:", userData);
+            console.log("UserData:", userData);
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(userData));
@@ -145,11 +149,42 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(500, { 'Content-Type': 'text/plain' });
             res.end("Error fetching user");
         }
-    } else {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end("Not Found");
-    }
-});
+    }else if (parsedUrl.pathname === ('/users') && req.method === 'PUT') {
+        
+        let body='';
+         req.on('data',(chunks)=>{
+            body =chunks.toString();
+         });
+         req.on('end',async()=>{
+            console.log("body",body);
+            let parsed_body=JSON.parse(body);
+            console.log("parsed_body",parsed_body);
+            let query=parsedUrl.query
+            let parsed_query = querystring.parse(query);
+            console.log("parsed_query :",parsed_query)
+
+            let id =parsed_query.id;
+            console.log("id",id);
+            let _id =new ObjectId(id);
+            console.log("_id",_id);
+            let updateDatas={
+                username:parsed_body.username,
+                email:parsed_body.email
+                }
+            
+           let updatedata= await collection.updateOne({_id},{$set :updateDatas})
+
+            res.writeHead(200,{"Content-Type":"text/plain"});
+            res.end("User updated successfully")
+
+            let string_data = JSON.stringify(updatedata);
+            console.log("string_data : ",string_data);
+
+         })
+         
+    } 
+    });
+
 
 server.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);

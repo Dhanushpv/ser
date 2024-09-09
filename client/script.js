@@ -86,21 +86,23 @@ async function fetchData() {
         }
         const data = await response.json();
 
-        const tableBody = document.querySelector('#userTable tbody');
-        tableBody.innerHTML = ''; // Clear existing content
-
+        const tableBody = document.getElementById('userTable');
+        let row='';
         data.forEach(user => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="hov"><i class='fas fa-user-alt' style='font-size:36px'></i></td>
-                <td class="hov">${user._id}</td>
-                <td class="hov">${user.name}</td>
-                <td class="hov">${user.email}</td>
-                <td><button class="custom-btn btn-16" data-id="${user._id}">view</button></td>
-                <td><i class="fa fa-trash" data-id="${user._id}" style='font-size:30px;color:red'></i></td>
-
+            row += `
+                <tr>
+                    <td class="hov"><i class='fas fa-user-alt' style='font-size:36px'></i></td>
+                    <td class="hov">${user._id}</td>
+                    <td class="hov">${user.name}</td>
+                    <td class="hov">${user.email}</td>
+                    <td><button class="custom-btn btn-16" data-id="${user._id}">view</button></td>
+                    <td><i class="fa fa-pencil-square-o" style="font-size:30px" onClick="updateUser('${user._id}')"></i></td>
+                    <td><i class="fa fa-trash" data-id="${user._id}" style='font-size:30px;color:red'></i></td>
+                </tr>
             `;
-            tableBody.appendChild(row);
+
+            // tableBody.appendChild(row);
+            tableBody.innerHTML =row;
         });
 
        
@@ -116,15 +118,23 @@ async function fetchData() {
                 deleteUser(id);
             });
         });
+        // document.querySelectorAll('#userTable i.fa-pencil-square-o').forEach(icon => {
+        //     icon.addEventListener('click', (event) => {
+        //         const id = event.target.getAttribute('data-id');
+        //         updateUser(id);
+        //     });
+        // });
+        
 
     } catch (error) {
         console.error('Fetch error:', error);
     }
 }
+fetchData();
 
 function handleClick(id) {
     console.log("Handling click for ID:", id);
-    window.location.href = `view.html?id=${id}`;
+    window.location.href=`view.html?id=${id}`;
 }
 
 async function loadUserDatas() {
@@ -135,7 +145,7 @@ async function loadUserDatas() {
     let id = urlParams.get("id");
 
     try {
-        const response = await fetch(`/submits?id=${id}`);
+        const response = await fetch(`/users?id=${id}`);
 
         if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -152,27 +162,55 @@ async function loadUserDatas() {
         alert("Failed to load user data");
     }
 }
-function deleteUser(id) {
-    fetch(`/submits?id=${id}`, {
-        method: 'DELETE',
-    })
-    .then(response => {
+async function deleteUser(id) {
+    try {
+        const response = await fetch(`/submits?id=${id}`, {
+            method: 'DELETE',
+        });
+
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
-        return response.json();
-    })
-    .then(() => {
-        // Refresh data after deletion
+
+        await response.json();
+
         fetchData();
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Delete error:', error);
-    });
+    }
 }
 
-fetchData();
+
+
 if (window.location.pathname.includes('view.html')) {
     loadUserDatas();
+}
+
+
+
+function updateUser(id) {
+    console.log("update click for ID:", id);
+    window.location.href=`update.html?id=${id}`;
+}
+async function editpage(){
+    let name = document.getElementById('username').value;
+    let email = document.getElementById('email').value;
+    let querystring = window.location.search;
+    let data ={
+        name,
+        email,
+    }
+    let urlParams = new URLSearchParams(querystring);
+    let id = urlParams.get("id");
+    let response = await fetch(`/submits?id=${id}`,{
+        method:'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    body:data
+    }) 
+    let edit =await JSON.parse(response);
+    let edit_data= await JSON.stringify(edit);
+    console.log("edit_data",edit_data)
 }
 
